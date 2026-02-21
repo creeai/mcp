@@ -21,6 +21,11 @@ export const tools = [
         patientId: z.string().uuid().optional(),
         nonApiExclusive: z.boolean().optional(),
       }),
+      example: JSON.stringify({
+        clinicId: "00000000-0000-0000-0000-000000000000",
+        startDate: "2025-03-01",
+        endDate: "2025-03-31",
+      }, null, 2),
     },
     handler: async (args: Record<string, unknown>) => {
       const q: Record<string, string> = {};
@@ -44,6 +49,11 @@ export const tools = [
         patientId: z.string().uuid().optional(),
         nonApiExclusive: z.boolean().optional(),
       }),
+      example: JSON.stringify({
+        clinicId: "00000000-0000-0000-0000-000000000000",
+        startDate: "2025-03-01",
+        endDate: "2025-03-31",
+      }, null, 2),
     },
     handler: async (args: Record<string, unknown>) => {
       const q: Record<string, string> = {};
@@ -75,6 +85,11 @@ export const tools = [
         page: z.number().optional(),
         pageSize: z.number().optional(),
       }),
+      example: JSON.stringify({
+        clinicId: "00000000-0000-0000-0000-000000000000",
+        page: 1,
+        pageSize: 20,
+      }, null, 2),
     },
     handler: async (args: Record<string, unknown>) => text(await ecuro.post("/list-boletos", args)),
   },

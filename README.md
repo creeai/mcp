@@ -31,6 +31,7 @@ npm start
 
 - **Health:** `GET http://localhost:3000/health`
 - **MCP (Streamable HTTP):** `POST http://localhost:3000/mcp` (e `GET` para SSE quando aplicável)
+- **Painel de testes:** `GET http://localhost:3000/panel` — interface web para testar cada ferramenta; cada tool já vem com um JSON de exemplo pré-configurado (substitua os UUIDs pelos da sua conta)
 
 ## Conectar no Cursor / Claude
 

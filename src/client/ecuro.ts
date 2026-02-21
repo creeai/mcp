@@ -16,6 +16,19 @@ export type EcuroGetOptions = {
   responseAsText?: boolean;
 };
 
+/** Monta a URL completa: base + path (evita que new URL("/path", base) substitua o path do base). */
+function buildFullUrl(path: string, query?: Record<string, string | number | boolean | undefined>): URL {
+  const base = config.ecuroBaseUrl.replace(/\/$/, "");
+  const pathNorm = path.startsWith("/") ? path.slice(1) : path;
+  const url = new URL(base + "/" + pathNorm);
+  if (query) {
+    for (const [k, v] of Object.entries(query)) {
+      if (v !== undefined) url.searchParams.set(k, String(v));
+    }
+  }
+  return url;
+}
+
 /**
  * GET para a API Ecuro. Retorna JSON por padrão.
  */
@@ -24,67 +37,100 @@ export async function get(
   query?: Record<string, string | number | boolean | undefined>,
   options?: EcuroGetOptions
 ): Promise<unknown> {
-  const url = new URL(path, config.ecuroBaseUrl);
-  if (query) {
-    for (const [k, v] of Object.entries(query)) {
-      if (v !== undefined) url.searchParams.set(k, String(v));
-    }
-  }
+  const url = buildFullUrl(path, query);
   const res = await fetch(url.toString(), {
     method: "GET",
     headers: { ...DEFAULT_HEADERS },
   });
-  await ensureOk(res, path);
-  if (options?.responseAsText) {
-    return await res.text();
+  const raw = await res.text();
+  if (!res.ok) {
+    logEcuroError("GET", url.toString(), res.status, raw);
+    throw new Error(buildErrorWithBody(path, raw, res.statusText));
   }
+  if (options?.responseAsText) return raw;
   const contentType = res.headers.get("content-type") ?? "";
   if (contentType.includes("text/csv") || contentType.includes("text/plain")) {
-    return await res.text();
+    return raw;
   }
-  return (await res.json()) as unknown;
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return raw;
+  }
 }
 
 /**
  * POST para a API Ecuro.
  */
 export async function post(path: string, body?: object): Promise<unknown> {
-  const url = new URL(path, config.ecuroBaseUrl);
+  const url = buildFullUrl(path);
   const res = await fetch(url.toString(), {
     method: "POST",
     headers: { ...DEFAULT_HEADERS },
     body: body ? JSON.stringify(body) : undefined,
   });
-  await ensureOk(res, path);
+  const raw = await res.text();
+  if (!res.ok) {
+    logEcuroError("POST", url.toString(), res.status, raw);
+    throw new Error(buildErrorWithBody(path, raw, res.statusText));
+  }
   const contentType = res.headers.get("content-type") ?? "";
   if (contentType.includes("text/csv") || contentType.includes("text/plain")) {
-    return await res.text();
+    return raw;
   }
-  return (await res.json()) as unknown;
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return raw;
+  }
 }
 
 /**
  * PUT para a API Ecuro.
  */
 export async function put(path: string, body?: object): Promise<unknown> {
-  const url = new URL(path, config.ecuroBaseUrl);
+  const url = buildFullUrl(path);
   const res = await fetch(url.toString(), {
     method: "PUT",
     headers: { ...DEFAULT_HEADERS },
     body: body ? JSON.stringify(body) : undefined,
   });
-  await ensureOk(res, path);
-  return (await res.json()) as unknown;
+  const raw = await res.text();
+  if (!res.ok) {
+    logEcuroError("PUT", url.toString(), res.status, raw);
+    throw new Error(buildErrorWithBody(path, raw, res.statusText));
+  }
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return raw;
+  }
 }
 
-async function ensureOk(res: Response, path: string): Promise<void> {
-  if (res.ok) return;
-  let message: string;
-  try {
-    const json = (await res.json()) as { error?: string; message?: string };
-    message = json.error ?? json.message ?? res.statusText;
-  } catch {
-    message = await res.text() || res.statusText;
+function logEcuroError(method: string, fullUrl: string, status: number, body: string): void {
+  console.error("[Ecuro API] Erro na resposta:");
+  console.error("  Método:", method);
+  console.error("  URL:", fullUrl);
+  console.error("  Status:", status);
+  console.error("  Body da resposta:", body);
+}
+
+function buildErrorMessage(path: string, raw: string, statusText: string): string {
+  let message = statusText;
+  if (raw) {
+    try {
+      const json = JSON.parse(raw) as { error?: string; message?: string };
+      message = json.error ?? json.message ?? message;
+    } catch {
+      message = raw;
+    }
   }
-  throw new Error(`Ecuro API ${res.status} ${path}: ${message}`);
+  return `Ecuro API ${path}: ${message}`;
+}
+
+/** Expõe o body completo no erro para o painel exibir (formato que inclui body bruto). */
+export function buildErrorWithBody(path: string, raw: string, statusText: string): string {
+  const summary = buildErrorMessage(path, raw, statusText);
+  if (!raw) return summary;
+  return `${summary}\n\n--- Body completo da resposta ---\n${raw}`;
 }

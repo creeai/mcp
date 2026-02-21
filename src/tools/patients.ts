@@ -14,8 +14,9 @@ export const tools = [
       title: "Buscar paciente por telefone",
       description: "Busca paciente pelo número de telefone. Formatação automática.",
       inputSchema: z.object({ phone: z.string() }),
+      example: JSON.stringify({ phone: "11999999999" }, null, 2),
     },
-    handler: async (args: { phone: string }) => text(await ecuro.post("/get-patient-by-phone", args)),
+    handler: async (args: { phone: string }) => text(await ecuro.post("/get-patient-by-phone/", args)),
   },
   {
     name: "get_patient_by_cpf",
@@ -26,6 +27,10 @@ export const tools = [
         cpf: z.string(),
         clinicId: z.string().uuid().optional(),
       }),
+      example: JSON.stringify({
+        cpf: "12345678900",
+        clinicId: "00000000-0000-0000-0000-000000000000",
+      }, null, 2),
     },
     handler: async (args: { cpf: string; clinicId?: string }) => text(await ecuro.post("/get-patient-by-cpf", args)),
   },
@@ -39,6 +44,10 @@ export const tools = [
         patientId: z.string().uuid().optional(),
         cpf: z.string().optional(),
       }),
+      example: JSON.stringify({
+        clinicId: "00000000-0000-0000-0000-000000000000",
+        patientId: "00000000-0000-0000-0000-000000000000",
+      }, null, 2),
     },
     handler: async (args: Record<string, string | undefined>) => {
       const q: Record<string, string> = {};
@@ -59,6 +68,10 @@ export const tools = [
         lastAppointment: z.string().optional(),
         dateOfBirth: z.string().optional(),
       }),
+      example: JSON.stringify({
+        clinicId: "00000000-0000-0000-0000-000000000000",
+        all: true,
+      }, null, 2),
     },
     handler: async (args: Record<string, unknown>) => {
       const q: Record<string, string> = {};
@@ -74,6 +87,7 @@ export const tools = [
       title: "Tratamentos não completados do paciente",
       description: "Tratamentos ativos com procedimentos e histórico. patientId obrigatório.",
       inputSchema: z.object({ patientId: z.string().uuid() }),
+      example: JSON.stringify({ patientId: "00000000-0000-0000-0000-000000000000" }, null, 2),
     },
     handler: async (args: { patientId: string }) =>
       text(await ecuro.post("/patient-incomplete-treatments", args)),
@@ -92,6 +106,12 @@ export const tools = [
         startDate: z.string().optional(),
         endDate: z.string().optional(),
       }),
+      example: JSON.stringify({
+        clinicId: "00000000-0000-0000-0000-000000000000",
+        category: "active",
+        page: 1,
+        pageSize: 20,
+      }, null, 2),
     },
     handler: async (args: Record<string, unknown>) => text(await ecuro.post("/orto-patients", args)),
   },

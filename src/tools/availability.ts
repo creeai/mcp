@@ -23,6 +23,11 @@ export const tools = [
         startDate: z.string().optional(),
         endDate: z.string().optional(),
       }),
+      example: JSON.stringify({
+        clinicId: "00000000-0000-0000-0000-000000000000",
+        startDate: "2025-03-01",
+        endDate: "2025-03-31",
+      }, null, 2),
     },
     handler: async (args: Record<string, unknown>) => {
       const q: Record<string, string | number | boolean> = {};
@@ -42,6 +47,11 @@ export const tools = [
         dateMax: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
         clinicId: z.string().uuid(),
       }),
+      example: JSON.stringify({
+        clinicId: "00000000-0000-0000-0000-000000000000",
+        dateMin: "2025-03-01",
+        dateMax: "2025-03-31",
+      }, null, 2),
     },
     handler: async (args: Record<string, string>) =>
       text(await ecuro.get("/dates", args as Record<string, string>)),
@@ -52,6 +62,7 @@ export const tools = [
       title: "Bloqueadores da clínica",
       description: "Bloqueadores de clínica e dentistas para os próximos 3 meses.",
       inputSchema: z.object({ clinicId: z.string().uuid() }),
+      example: JSON.stringify({ clinicId: "00000000-0000-0000-0000-000000000000" }, null, 2),
     },
     handler: async (args: { clinicId: string }) =>
       text(await ecuro.post("/blockers-for-a-clinic", args)),
@@ -65,6 +76,10 @@ export const tools = [
         dentistId: z.string(),
         date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
       }),
+      example: JSON.stringify({
+        dentistId: "00000000-0000-0000-0000-000000000000",
+        date: "2025-03-15",
+      }, null, 2),
     },
     handler: async (args: { dentistId: string; date: string }) =>
       text(await ecuro.post("/dentist-availabilty", { dentistId: args.dentistId, date: args.date })),

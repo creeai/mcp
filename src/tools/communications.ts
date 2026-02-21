@@ -14,6 +14,7 @@ export const tools = [
       title: "Marcar comunicação como lida",
       description: "Marca uma comunicação como lida pelo paciente. id é o UUID da comunicação.",
       inputSchema: z.object({ id: z.string().uuid() }),
+      example: JSON.stringify({ id: "00000000-0000-0000-0000-000000000000" }, null, 2),
     },
     handler: async (args: { id: string }) =>
       text(await ecuro.put(`/communications/${args.id}/read`)),
@@ -29,6 +30,11 @@ export const tools = [
         timestamp: z.string(),
         permissionStatus: z.string().optional(),
       }),
+      example: JSON.stringify({
+        username: "12345678900",
+        event: "first_login_done",
+        timestamp: "2025-03-15T14:30:00.000Z",
+      }, null, 2),
     },
     handler: async (args: Record<string, unknown>) => text(await ecuro.post("/onboarding-event", args)),
   },

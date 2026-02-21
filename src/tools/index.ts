@@ -6,7 +6,7 @@ import * as clinics from "./clinics.js";
 import * as reports from "./reports.js";
 import * as communications from "./communications.js";
 
-const allTools = [
+export const allTools = [
   ...appointments.tools,
   ...availability.tools,
   ...patients.tools,
@@ -14,6 +14,33 @@ const allTools = [
   ...reports.tools,
   ...communications.tools,
 ];
+
+type ToolHandler = (a: Record<string, unknown>) => Promise<{ content: [{ type: "text"; text: string }] }>;
+
+export function getToolsList(): { name: string; title: string; description: string; example: string }[] {
+  return allTools.map((t) => ({
+    name: t.name,
+    title: t.config.title,
+    description: t.config.description,
+    example: (t.config as { example?: string }).example ?? "{}",
+  }));
+}
+
+export async function invokeTool(
+  toolName: string,
+  args: Record<string, unknown>
+): Promise<{ success: true; text: string } | { success: false; error: string }> {
+  const t = allTools.find((x) => x.name === toolName);
+  if (!t) return { success: false, error: `Tool não encontrada: ${toolName}` };
+  try {
+    const result = await (t.handler as ToolHandler)(args);
+    const text = result.content?.[0]?.type === "text" ? result.content[0].text : JSON.stringify(result);
+    return { success: true, text };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { success: false, error: message };
+  }
+}
 
 export function registerAllTools(server: McpServer): void {
   for (const t of allTools) {

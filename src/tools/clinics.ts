@@ -14,6 +14,7 @@ export const tools = [
       title: "Listar clínicas",
       description: "Lista todas as clínicas ou uma clínica específica. clinicId opcional.",
       inputSchema: z.object({ clinicId: z.string().uuid().optional() }),
+      example: "{}",
     },
     handler: async (args: { clinicId?: string }) => {
       const q: Record<string, string> = {};
@@ -27,6 +28,7 @@ export const tools = [
       title: "Listar especialidades médicas",
       description: "Retorna todas as especialidades disponíveis.",
       inputSchema: z.object({}),
+      example: "{}",
     },
     handler: async () => text(await ecuro.get("/list-specialties")),
   },
@@ -36,6 +38,7 @@ export const tools = [
       title: "Dentistas ativos da clínica",
       description: "Lista dentistas ativos da clínica. clinicId obrigatório.",
       inputSchema: z.object({ clinicId: z.string().uuid() }),
+      example: JSON.stringify({ clinicId: "00000000-0000-0000-0000-000000000000" }, null, 2),
     },
     handler: async (args: { clinicId: string }) => text(await ecuro.post("/active-dentists", args)),
   },
@@ -45,6 +48,7 @@ export const tools = [
       title: "Obter logo da clínica",
       description: "Retorna referência ao logo. id é o UUID do arquivo de logo.",
       inputSchema: z.object({ id: z.string().uuid() }),
+      example: JSON.stringify({ id: "00000000-0000-0000-0000-000000000000" }, null, 2),
     },
     handler: async (args: { id: string }) => {
       const data = await ecuro.get(`/logo/${args.id}`) as unknown;
