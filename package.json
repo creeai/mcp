@@ -1,0 +1,23 @@
+{
+  "name": "mcp-ecuro-light",
+  "version": "1.0.0",
+  "description": "MCP server for Ecuro Light API - agendamento, pacientes, disponibilidade, clínicas, relatórios",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc --watch"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}
