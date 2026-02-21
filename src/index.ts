@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { randomUUID } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { config } from "./config.js";
@@ -45,7 +46,7 @@ async function main() {
   registerAllTools(server);
 
   const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: undefined,
+    sessionIdGenerator: () => randomUUID(),
   });
   await server.connect(transport);
 
@@ -135,7 +136,9 @@ async function main() {
           await transport.handleRequest(req, res, parsedBody);
           logger.mcp(`${req.method} ${path} ok`);
         } catch (err) {
-          logger.error("MCP", "handleRequest error", err);
+          const msg = err instanceof Error ? err.message : String(err);
+          const stack = err instanceof Error ? err.stack : undefined;
+          logger.error("MCP", `handleRequest error: ${msg}`, stack ?? err);
           if (!res.headersSent) {
             res.writeHead(500, { "Content-Type": "application/json" });
             res.end(
