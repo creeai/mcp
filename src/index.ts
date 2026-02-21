@@ -125,15 +125,8 @@ async function main() {
     if (path === MCP_PATH || path === "/") {
       if (req.method === "GET" || req.method === "POST") {
         logger.mcp(`${req.method} ${path}`);
-        let parsedBody: unknown;
-        if (req.method === "POST") {
-          parsedBody = await readBody(req);
-          logger.mcpDebug("MCP POST body recebido", parsedBody);
-        } else {
-          parsedBody = undefined;
-        }
         try {
-          await transport.handleRequest(req, res, parsedBody);
+          await transport.handleRequest(req, res);
           logger.mcp(`${req.method} ${path} ok`);
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
