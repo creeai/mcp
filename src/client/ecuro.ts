@@ -4,6 +4,7 @@
  */
 
 import { config } from "../config.js";
+import { logger } from "../logger.js";
 
 const DEFAULT_HEADERS = {
   accept: "application/json",
@@ -38,6 +39,7 @@ export async function get(
   options?: EcuroGetOptions
 ): Promise<unknown> {
   const url = buildFullUrl(path, query);
+  logger.ecuro("GET", { path, query });
   const res = await fetch(url.toString(), {
     method: "GET",
     headers: { ...DEFAULT_HEADERS },
@@ -47,6 +49,7 @@ export async function get(
     logEcuroError("GET", url.toString(), res.status, raw);
     throw new Error(buildErrorWithBody(path, raw, res.statusText));
   }
+  logger.ecuro("GET ok", { path, status: res.status });
   if (options?.responseAsText) return raw;
   const contentType = res.headers.get("content-type") ?? "";
   if (contentType.includes("text/csv") || contentType.includes("text/plain")) {
@@ -64,6 +67,7 @@ export async function get(
  */
 export async function post(path: string, body?: object): Promise<unknown> {
   const url = buildFullUrl(path);
+  logger.ecuro("POST", { path });
   const res = await fetch(url.toString(), {
     method: "POST",
     headers: { ...DEFAULT_HEADERS },
@@ -74,6 +78,7 @@ export async function post(path: string, body?: object): Promise<unknown> {
     logEcuroError("POST", url.toString(), res.status, raw);
     throw new Error(buildErrorWithBody(path, raw, res.statusText));
   }
+  logger.ecuro("POST ok", { path, status: res.status });
   const contentType = res.headers.get("content-type") ?? "";
   if (contentType.includes("text/csv") || contentType.includes("text/plain")) {
     return raw;
@@ -90,6 +95,7 @@ export async function post(path: string, body?: object): Promise<unknown> {
  */
 export async function put(path: string, body?: object): Promise<unknown> {
   const url = buildFullUrl(path);
+  logger.ecuro("PUT", { path });
   const res = await fetch(url.toString(), {
     method: "PUT",
     headers: { ...DEFAULT_HEADERS },
@@ -100,6 +106,7 @@ export async function put(path: string, body?: object): Promise<unknown> {
     logEcuroError("PUT", url.toString(), res.status, raw);
     throw new Error(buildErrorWithBody(path, raw, res.statusText));
   }
+  logger.ecuro("PUT ok", { path, status: res.status });
   try {
     return JSON.parse(raw) as unknown;
   } catch {
@@ -108,11 +115,7 @@ export async function put(path: string, body?: object): Promise<unknown> {
 }
 
 function logEcuroError(method: string, fullUrl: string, status: number, body: string): void {
-  console.error("[Ecuro API] Erro na resposta:");
-  console.error("  Método:", method);
-  console.error("  URL:", fullUrl);
-  console.error("  Status:", status);
-  console.error("  Body da resposta:", body);
+  logger.ecuroError("Erro na resposta Ecuro", { method, fullUrl, status, body: body.slice(0, 500) });
 }
 
 function buildErrorMessage(path: string, raw: string, statusText: string): string {
