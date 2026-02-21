@@ -15,7 +15,7 @@ const PANEL_API_PATH = "/panel/api";
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Accept, Authorization",
+  "Access-Control-Allow-Headers": "Content-Type, Accept, Authorization, Mcp-Session-Id, Mcp-Protocol-Version",
 } as const;
 
 function readBody(req: import("node:http").IncomingMessage): Promise<unknown> {
@@ -38,17 +38,38 @@ function readBody(req: import("node:http").IncomingMessage): Promise<unknown> {
   });
 }
 
-async function main() {
+/** Verifica se o body é um pedido de initialize (JSON-RPC method === "initialize"). */
+function isInitializeBody(body: unknown): boolean {
+  if (Array.isArray(body)) {
+    return body.some((m) => (m as { method?: string })?.method === "initialize");
+  }
+  return (body as { method?: string })?.method === "initialize";
+}
+
+type SessionEntry = {
+  server: McpServer;
+  transport: StreamableHTTPServerTransport;
+  createdAt: number;
+};
+
+/** Cria um novo par McpServer + Transport (uma sessão por usuário). */
+async function createMcpSession(): Promise<SessionEntry> {
   const server = new McpServer(
     { name: "mcp-ecuro-light", version: "1.0.0" },
     { capabilities: {} }
   );
   registerAllTools(server);
-
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: () => randomUUID(),
   });
   await server.connect(transport);
+  return { server, transport, createdAt: Date.now() };
+}
+
+const MAX_SESSIONS = Math.max(1, parseInt(process.env.MAX_MCP_SESSIONS ?? "100", 10));
+
+async function main() {
+  const sessions = new Map<string, SessionEntry>();
 
   const httpServer = createServer(async (req, res) => {
     for (const [k, v] of Object.entries(CORS_HEADERS)) res.setHeader(k, v);
@@ -124,9 +145,70 @@ async function main() {
     }
     if (path === MCP_PATH || path === "/") {
       if (req.method === "GET" || req.method === "POST") {
-        logger.mcp(`${req.method} ${path}`);
+        const sessionId = req.headers["mcp-session-id"] as string | undefined;
+        const sessionIdNorm = sessionId?.trim() || undefined;
+
+        logger.mcp(`${req.method} ${path}`, sessionIdNorm ? { sessionId: sessionIdNorm.slice(0, 8) + "…" } : undefined);
+
         try {
-          await transport.handleRequest(req, res);
+          let parsedBody: unknown;
+          if (req.method === "POST") {
+            parsedBody = await readBody(req);
+          }
+
+          const isInitialize = req.method === "POST" && isInitializeBody(parsedBody);
+          const entry = sessionIdNorm ? sessions.get(sessionIdNorm) : undefined;
+
+          if (isInitialize) {
+            if (entry) {
+              entry.transport.close().catch(() => {});
+              entry.server.close().catch(() => {});
+              sessions.delete(sessionIdNorm!);
+            }
+            if (sessions.size >= MAX_SESSIONS) {
+              let oldestId: string | null = null;
+              let oldest = Infinity;
+              for (const [id, e] of sessions) {
+                if (e.createdAt < oldest) {
+                  oldest = e.createdAt;
+                  oldestId = id;
+                }
+              }
+              if (oldestId) {
+                const old = sessions.get(oldestId)!;
+                old.transport.close().catch(() => {});
+                old.server.close().catch(() => {});
+                sessions.delete(oldestId);
+                logger.mcp("sessão antiga removida (limite)", { sessionId: oldestId.slice(0, 8) + "…" });
+              }
+            }
+            const newEntry = await createMcpSession();
+            await newEntry.transport.handleRequest(req, res, parsedBody);
+            if (newEntry.transport.sessionId) {
+              sessions.set(newEntry.transport.sessionId, newEntry);
+              logger.mcp("nova sessão criada", { sessionId: newEntry.transport.sessionId.slice(0, 8) + "…", total: sessions.size });
+            }
+          } else {
+            if (!entry) {
+              logger.mcp("sessão não encontrada", { sessionId: sessionIdNorm });
+              if (!res.headersSent) {
+                res.writeHead(400, { "Content-Type": "application/json" });
+                res.end(
+                  JSON.stringify({
+                    jsonrpc: "2.0",
+                    error: { code: -32000, message: "Bad Request: Unknown or expired session. Send initialize first." },
+                    id: null,
+                  })
+                );
+              }
+              return;
+            }
+            if (req.method === "POST") {
+              await entry.transport.handleRequest(req, res, parsedBody);
+            } else {
+              await entry.transport.handleRequest(req, res);
+            }
+          }
           logger.mcp(`${req.method} ${path} ok`);
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
@@ -164,8 +246,11 @@ async function main() {
 
   const shutdown = async () => {
     httpServer.close();
-    await transport.close();
-    await server.close();
+    for (const [, entry] of sessions) {
+      entry.transport.close().catch(() => {});
+      await entry.server.close().catch(() => {});
+    }
+    sessions.clear();
     process.exit(0);
   };
   process.on("SIGINT", shutdown);
