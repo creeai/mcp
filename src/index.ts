@@ -88,7 +88,7 @@ async function main() {
       return;
     }
 
-    if (path === MCP_PATH || path === "/") {
+    if (path === "/") {
       if (req.method === "GET") {
         const accept = (req.headers["accept"] ?? "").toLowerCase();
         if (!accept.includes("text/event-stream")) {
@@ -97,6 +97,8 @@ async function main() {
           return;
         }
       }
+    }
+    if (path === MCP_PATH || path === "/") {
       if (req.method === "GET" || req.method === "POST") {
         let parsedBody: unknown;
         if (req.method === "POST") {
